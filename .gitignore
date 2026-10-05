@@ -1,0 +1,32 @@
+# Local dependencies and generated files
+node_modules/
+dist/
+dist-ssr/
+.venv/
+.train-venv/
+venv/
+__pycache__/
+*.py[cod]
+*.tsbuildinfo
+.npm-cache/
+.legacy-python/
+.ipynb_checkpoints/
+*.log
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+.aws/
+
+# Editor and operating system files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.codex/
+.agents/
+

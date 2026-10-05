@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --canvas-rgb: 244 247 248;
+  --ink-rgb: 24 43 54;
+  --primary-rgb: 23 107 112;
+  --color-canvas: #f4f7f8;
+  --color-surface: #ffffff;
+  --color-ink: #182b36;
+  --color-primary: #176b70;
+  --color-border: #dfe7ea;
+}
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+  body {
+    @apply bg-canvas text-ink-900 font-sans antialiased;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  ::selection {
+    @apply bg-primary-100 text-primary-700;
+  }
+  *:focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-canvas;
+  }
+}
+
+@layer utilities {
+  .shadow-card {
+    border: 1px solid var(--color-border);
+    box-shadow: 0 3px 12px -8px rgb(24 43 54 / 14%);
+  }
+  .skip-link {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 100;
+    clip-path: inset(50%);
+    padding: 12px 20px;
+    background: var(--color-primary);
+    color: white;
+    border-radius: 8px;
+  }
+  .skip-link:focus { clip-path: none; }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-ink-300/50 rounded-full;
+  }
+}
+
+@layer base {
+  body { margin: 0; }
+  button, a, input, select { -webkit-tap-highlight-color: transparent; }
+  button, a { touch-action: manipulation; }
+  button, input, select { min-height: 44px; }
+  button, summary { cursor: pointer; }
+  button:disabled { cursor: default; }
+  svg { flex-shrink: 0; }
+  .tabular-nums, .font-display { font-variant-numeric: tabular-nums; }
+  button { transition: background-color 150ms ease, color 150ms ease; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

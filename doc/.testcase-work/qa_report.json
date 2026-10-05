@@ -1,0 +1,25 @@
+{
+  "cases": 161,
+  "groups": {
+    "UIA": 16,
+    "UIH": 12,
+    "UIS": 12,
+    "AUT": 15,
+    "PRO": 11,
+    "MEA": 13,
+    "IOT": 17,
+    "ACT": 5,
+    "WEA": 8,
+    "REC": 5,
+    "CHA": 12,
+    "AIP": 18,
+    "SYS": 8,
+    "INT": 9
+  },
+  "not_run": 161,
+  "structural_checks": "passed",
+  "visual_qa": "not completed; LibreOffice unavailable",
+  "preset": "compact_reference_guide",
+  "override": "CaseForm: 9.5pt, line 1.05, cell top/bottom 60 DXA; label/detail widths 2700/6660 DXA",
+  "output": "C:\\Users\\Admin\\Desktop\\DATN\\HealthAI_TestCases.docx"
+}

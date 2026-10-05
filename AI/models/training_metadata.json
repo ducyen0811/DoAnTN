@@ -1,0 +1,53 @@
+{
+  "selected_model": "Decision Tree",
+  "selection_metric": "5-fold training CV macro F1",
+  "cv_scores": {
+    "Random Forest": {
+      "accuracy": 0.9667916666666667,
+      "precision_macro": 0.9632215468893044,
+      "recall_macro": 0.9655017163200401,
+      "f1_macro": 0.9641213862360042,
+      "f1_macro_std": 0.001225832412234162
+    },
+    "Logistic Regression": {
+      "accuracy": 0.8634583333333333,
+      "precision_macro": 0.8581621682659684,
+      "recall_macro": 0.8592950769823693,
+      "f1_macro": 0.8579870905595133,
+      "f1_macro_std": 0.004665310800726738
+    },
+    "Decision Tree": {
+      "accuracy": 0.9729583333333333,
+      "precision_macro": 0.969815781396731,
+      "recall_macro": 0.9697598569444319,
+      "f1_macro": 0.969751759444019,
+      "f1_macro_std": 0.0024411961954485147
+    }
+  },
+  "seed": 42,
+  "features": [
+    "age",
+    "gender",
+    "height",
+    "weight",
+    "bmi",
+    "heart_rate",
+    "spo2",
+    "activity_level",
+    "temperature",
+    "humidity",
+    "uv_index",
+    "aqi"
+  ],
+  "labels": {
+    "0": "Normal",
+    "1": "Warning",
+    "2": "High Risk"
+  },
+  "train_rows": 24000,
+  "test_rows": 6000,
+  "dataset_sha256": "e47d1e5c4a31a9988ecb7c66a00839d9c7584f0be0fb2d2e6042992276557412",
+  "python_version": "3.13.15",
+  "sklearn_version": "1.9.1",
+  "data_provenance": "See dataset documentation; default dataset is synthetic"
+}

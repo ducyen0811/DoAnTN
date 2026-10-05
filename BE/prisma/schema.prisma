@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String        @unique @db.VarChar(320)
+  password_hash String
+  profile       Json
+  next_check_in DateTime      @db.Timestamptz(6)
+  sessions      AuthSession[]
+  weights       WeightEntry[]
+  devices       Device[]
+  measurements  Measurement[]
+  activities    Activity[]
+
+  @@map("users")
+}
+
+model AuthSession {
+  token_hash String   @id @db.Char(64)
+  user_id    String   @db.Uuid
+  expires_at DateTime @db.Timestamptz(6)
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "auth_sessions_user_idx")
+  @@map("auth_sessions")
+}
+
+model WeightEntry {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String   @db.Uuid
+  recorded_at DateTime @default(now()) @db.Timestamptz(6)
+  weight      Float
+  bmi         Float
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id, recorded_at], map: "weights_user_time_idx")
+  @@map("weight_entries")
+}
+
+model Device {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String        @db.Uuid
+  name         String        @db.VarChar(100)
+  model        String        @default("ESP32 + MAX30102") @db.VarChar(100)
+  key_hash     String        @db.Char(64)
+  battery      Int           @default(100)
+  last_seen    DateTime?     @db.Timestamptz(6)
+  enabled      Boolean       @default(true)
+  user         User          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  measurements Measurement[]
+
+  @@unique([id, user_id])
+  @@index([user_id], map: "devices_user_idx")
+  @@map("devices")
+}
+
+model Measurement {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String    @db.Uuid
+  device_id   String?   @db.Uuid
+  status      String    @default("pending")
+  source      String
+  scenario    String?
+  context     String    @default("unknown")
+  heart_rate  Float?
+  spo2        Float?
+  started_at  DateTime  @default(now()) @db.Timestamptz(6)
+  measured_at DateTime? @db.Timestamptz(6)
+  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  device      Device?   @relation(fields: [device_id, user_id], references: [id, user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([user_id, started_at(sort: Desc)], map: "measurements_user_time_idx")
+  @@index([device_id, status], map: "measurements_device_idx")
+  @@map("measurements")
+}
+
+model Activity {
+  user_id String   @db.Uuid
+  date    DateTime @db.Date
+  data    Json
+  user    User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, date])
+  @@map("activities")
+}
+
+// Kept for compatibility with the previous SQL migration history.
+model LegacyMigration {
+  name       String   @id
+  applied_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("schema_migrations")
+}

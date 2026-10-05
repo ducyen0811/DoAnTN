@@ -1,0 +1,4 @@
+export const WEIGHT_CHECK_IN_MS = 7 * 24 * 60 * 60 * 1000;
+export const MEASUREMENT_TIMEOUT_MS = 5 * 60 * 1000;
+export const MEASUREMENT_FRESHNESS_MS = 15 * 60 * 1000;
+export const DEVICE_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
