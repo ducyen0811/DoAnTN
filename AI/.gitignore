@@ -3,3 +3,6 @@
 backups/
 __pycache__/
 .ipynb_checkpoints/
+.torch-cache/
+dataset/food101/
+models/food101/
