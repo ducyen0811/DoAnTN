@@ -11,6 +11,7 @@ const questions = ["Giải thích kết quả đo của tôi", "Vì sao gợi ý
 export default function HealthChat() {
   const { reading, pending, invalid, stale } = useMeasurement();
   const { data } = useHealthSession();
+  const [mode, setMode] = useState<"health" | "calories">("health");
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -35,7 +36,7 @@ export default function HealthChat() {
       const profile = data?.profile;
       const response = await fetch("/chat-api/messages", {
         method: "POST", headers: { "Content-Type": "application/json" }, signal: controller.signal,
-        body: JSON.stringify({ messages: next.slice(-19), context: {
+        body: JSON.stringify({ mode, messages: next.slice(-19), context: {
           profile: profile ? { age: profile.age, heightCm: profile.heightCm, weightKg: profile.weightKg,
             healthGoal: profile.healthGoal, activityLevel: profile.activityLevel } : null,
           measurement: reading, pending, invalid, stale,
@@ -64,6 +65,8 @@ export default function HealthChat() {
       {messages.length > 0 && <button type="button" disabled={busy} onClick={() => { setMessages([]); setError(""); }} className="flex items-center gap-1 text-xs text-ink-500 disabled:opacity-50"><RotateCcw size={14} /> Cuộc trò chuyện mới</button>}
     </div>
     <p className="mt-2 text-xs leading-relaxed text-ink-500">AI cục bộ · Số đo và thời tiết mô phỏng · {data ? `Mục tiêu: ${healthGoals[data.profile.healthGoal]}` : "Chưa có hồ sơ"}. Hội thoại giữ trong trang này; mỗi lượt dùng tối đa 9 lượt hỏi đáp gần nhất.</p>
+    <div className="mt-3 flex gap-2">{(["health", "calories"] as const).map(value => <button key={value} type="button" disabled={busy} aria-pressed={mode === value} onClick={() => { setMode(value); setMessages([]); setError(""); }} className={`rounded-xl border px-3 py-2 text-sm ${mode === value ? "bg-primary-700 text-white" : "bg-white"}`}>{value === "health" ? "Sức khỏe" : "Ước tính calo"}</button>)}</div>
+    {mode === "calories" && <p className="mt-2 text-sm text-ink-700">Gửi tên món, lượng ăn (gram hoặc khẩu phần), cách nấu và dầu/sốt. AI ước tính calo và gợi ý theo mục tiêu của bạn.</p>}
     <div role="log" aria-label="Lịch sử trò chuyện" aria-live="polite" aria-relevant="additions" className="mt-4 max-h-96 space-y-3 overflow-y-auto rounded-xl bg-white/70 p-3">
       {messages.length === 0 && <p className="text-sm leading-relaxed text-ink-700">Bạn có thể hỏi lý do của gợi ý, giải thích chỉ số hoặc bổ sung bối cảnh. Trợ lý ưu tiên trả lời trực tiếp, chỉ hỏi lại khi thật sự cần thiết.</p>}
       {messages.map((message, index) => <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -75,7 +78,7 @@ export default function HealthChat() {
       {busy && <p role="status" className="text-sm text-ink-500">AI đang trả lời…</p>}
       <div ref={end} />
     </div>
-    {messages.length === 0 && <div className="mt-3 flex flex-wrap gap-2">{questions.map(question => <button type="button" key={question} disabled={busy} onClick={() => void send(question)} className="rounded-xl border border-primary-100 bg-white px-3 py-2 text-xs text-primary-700 disabled:opacity-50">{question}</button>)}</div>}
+    {messages.length === 0 && <div className="mt-3 flex flex-wrap gap-2">{(mode === "calories" ? ["Tôi ăn 150g món có nhãn 200 kcal/100g, hãy tính calo theo mục tiêu của tôi", "Một tô phở bò cần thông tin gì để ước tính calo?"] : questions).map(question => <button type="button" key={question} disabled={busy} onClick={() => void send(question)} className="rounded-xl border border-primary-100 bg-white px-3 py-2 text-xs text-primary-700 disabled:opacity-50">{question}</button>)}</div>}
     {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
     <form onSubmit={submit} className="mt-3 flex items-end gap-2">
       <div className="flex-1"><label htmlFor="health-chat-question" className="sr-only">Câu hỏi cho trợ lý AI</label>

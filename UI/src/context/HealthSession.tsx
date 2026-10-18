@@ -10,15 +10,17 @@ interface SessionContext {
   signedIn: boolean;
   signIn: (email: string) => boolean;
   completeProfile: (profile: PersonalProfile) => void;
+  setHealthGoal: (goal: PersonalProfile["healthGoal"]) => void;
   saveWeight: (weight: number) => boolean;
   signOut: () => void;
 }
 const Context = createContext<SessionContext | null>(null);
 
 const STORAGE_KEY = "healthai.demo-session.v1";
-function readSession(): { data: SessionData | null; signedIn: boolean } {
+function profileKey(email: string) { return `${STORAGE_KEY}.profile.${encodeURIComponent(email.trim().toLowerCase())}`; }
+function readSession(key = STORAGE_KEY): { data: SessionData | null; signedIn: boolean } {
   try {
-    const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? "null");
+    const saved = JSON.parse(sessionStorage.getItem(key) ?? "null");
     const profile = saved?.data?.profile;
     const entries = saved?.data?.entries;
     if (profile && typeof profile.fullName === "string" && typeof profile.email === "string"
@@ -45,6 +47,7 @@ export function HealthSessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ data, signedIn }));
+      if (data) sessionStorage.setItem(profileKey(data.profile.email), JSON.stringify({ data, signedIn: false }));
       setStorageError(false);
     } catch { setStorageError(true); }
   }, [data, signedIn]);
@@ -64,10 +67,15 @@ export function HealthSessionProvider({ children }: { children: ReactNode }) {
   }
 
   return <Context.Provider value={{ data, signedIn, completeProfile, saveWeight,
+    setHealthGoal(goal) {
+      if (data && Object.prototype.hasOwnProperty.call(healthGoals, goal)) setData({ ...data, profile: { ...data.profile, healthGoal: goal } });
+    },
     signIn(email) {
       const matches = data?.profile.email.toLowerCase() === email.trim().toLowerCase();
-      if (matches) setSignedIn(true);
-      return matches;
+      if (matches) { setSignedIn(true); return true; }
+      const saved = readSession(profileKey(email));
+      if (saved.data) { setData(saved.data); setSignedIn(true); return true; }
+      return false;
     },
     signOut() { setSignedIn(false); },
   }}>{storageError && <p role="alert" className="bg-warning-50 px-4 py-3 text-sm text-ink-900">Trình duyệt không cho phép lưu phiên. Dữ liệu trải nghiệm sẽ mất khi tải lại trang.</p>}{children}</Context.Provider>;

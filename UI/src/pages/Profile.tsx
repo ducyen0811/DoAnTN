@@ -19,7 +19,7 @@ function InfoRow({ icon: Icon, label, value }: { icon: typeof User; label: strin
 }
 
 export default function Profile() {
-  const { data } = useHealthSession();
+  const { data, setHealthGoal } = useHealthSession();
   if (!data) return null;
   const { profile } = data;
   return (
@@ -37,6 +37,7 @@ export default function Profile() {
             <InfoRow icon={Weight} label="Cân nặng gần nhất" value={`${profile.weightKg} kg`} />
             <InfoRow icon={Zap} label="Mức độ vận động" value={activityLabel[profile.activityLevel]} />
             <InfoRow icon={Target} label="Mục tiêu sức khỏe" value={healthGoals[profile.healthGoal]} />
+            <label className="block pb-3 text-sm">Đổi mục tiêu<select className="ml-3 rounded-xl border p-2" value={profile.healthGoal} onChange={event => setHealthGoal(event.target.value as keyof typeof healthGoals)}>{Object.entries(healthGoals).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           </div>
         </section>
         <div className="space-y-4">

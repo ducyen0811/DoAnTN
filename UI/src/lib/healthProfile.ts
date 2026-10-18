@@ -5,6 +5,7 @@ export const healthGoals = {
   maintain: "Duy trì sức khỏe",
   lose: "Giảm cân",
   gain: "Tăng cân",
+  heart: "Theo dõi và cải thiện nhịp tim",
   fitness: "Cải thiện thể lực",
 } as const;
 

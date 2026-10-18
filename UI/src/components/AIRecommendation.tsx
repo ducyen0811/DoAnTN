@@ -15,6 +15,7 @@ export default function AIRecommendation() {
     maintain: "Duy trì lịch vận động quen thuộc và ghi lại mức độ thoải mái sau mỗi buổi để điều chỉnh kế hoạch.",
     lose: "Theo dõi cân nặng ở lần cập nhật hằng tuần và duy trì lịch vận động đều đặn; một lần đo nhịp tim không cho biết hiệu quả giảm cân.",
     gain: "Theo dõi cân nặng hằng tuần và ghi lại việc ăn uống, tập luyện để đánh giá tiến độ tăng cân.",
+    heart: "Theo dõi nhịp tim khi nghỉ qua các lần đo cùng bối cảnh và ghi lại cảm nhận.",
     fitness: "Ghi lại thời lượng, cường độ và cảm nhận sau mỗi buổi tập; so sánh các lần đo trong cùng bối cảnh để theo dõi thay đổi.",
   };
   const weatherDetail = mockWeather.temperatureC >= 35 || mockWeather.uvIndex >= 8

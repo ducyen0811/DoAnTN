@@ -34,3 +34,16 @@ test("chat reports unavailable models and malformed responses instead of inventi
   await assert.rejects(replyToChat(input, async () => new Response("missing model", { status: 404 })));
   await assert.rejects(replyToChat(input, async () => Response.json({ message: { role: "assistant", content: "" } })));
 });
+
+test("calorie mode forwards the current personal goal and label arithmetic instructions", async () => {
+  const parsed = chatSchema.parse({ ...input, mode: "calories", context: { ...input.context, profile: { age: 30, heightCm: 170, weightKg: 65, healthGoal: "heart", activityLevel: "moderate" } } });
+  await replyToChat(parsed, async (_url, options) => {
+    const prompt = JSON.parse(String(options?.body)).messages[0].content;
+    assert.match(prompt, /calories/);
+    assert.match(prompt, /"healthGoal":"heart"/);
+    assert.match(prompt, /200 kcal\/100g = 300 kcal/);
+    return Response.json({ message: { role: "assistant", content: "??c t?nh theo nh?n." } });
+  });
+  assert.equal(chatSchema.parse(input).mode, "health");
+  assert.equal(chatSchema.safeParse({ ...input, mode: "unknown" }).success, false);
+});

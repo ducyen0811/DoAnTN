@@ -7,7 +7,7 @@ export const profileSchema = z
     gender: z.enum(["male", "female", "other"]),
     heightCm: z.number().finite().min(100).max(250),
     activityLevel: z.enum(["sedentary", "light", "moderate", "active", "very_active"]),
-    healthGoal: z.enum(["maintain", "lose", "gain", "fitness"]),
+    healthGoal: z.enum(["maintain", "lose", "gain", "fitness", "heart"]),
   })
   .strict();
 export type Profile = z.infer<typeof profileSchema> & { weightKg: number };
