@@ -19,6 +19,17 @@ router.post("/measurements", async (req, res) => {
         });
         if (!device) throw new ApiError(404, "Không tìm thấy thiết bị");
         if (!device.enabled) throw new ApiError(409, "Thiết bị đã bị thu hồi");
+        const pending = await db.measurement.findFirst({
+          where: {
+            device_id: device.id,
+            status: "pending",
+            started_at: { gt: new Date(Date.now() - MEASUREMENT_TIMEOUT_MS) },
+          },
+        });
+        if (pending) throw new ApiError(409, {
+          message: "Thiết bị đang có phiên đo chờ kết quả",
+          measurementId: pending.id,
+        });
       }
       return measurementView(
         await db.measurement.create({

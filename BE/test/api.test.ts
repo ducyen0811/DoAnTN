@@ -8,6 +8,7 @@ import { digest } from "../src/security.js";
 import { hashPassword, verifyPassword } from "../src/modules/auth/service.js";
 import { decodeJwt, decodeProtectedHeader, SignJWT } from "jose";
 import { config } from "../src/config.js";
+import { authResponse, diagnosticsResponse, measurementResponse } from "../src/response-schemas.js";
 
 const app = createApp();
 const api = "/api/v1";
@@ -30,6 +31,7 @@ async function register() {
     .send(payload)
     .expect(201);
   const data = response.body;
+  authResponse.parse(data);
   users.push(data.data.profile.id);
   return {
     payload,
@@ -418,6 +420,51 @@ test("device ingestion, tenant isolation, replay rejection and revocation", asyn
     .send({})
     .expect(401);
 });
+test("device diagnostics, concurrent starts, expiry and key rotation preserve ownership", async () => {
+  const u = await register();
+  const other = await register();
+  const created = (await request(app).post(api + "/devices").set(u.headers).send({ name: "IoT test" }).expect(201)).body;
+  const path = `${api}/devices/${created.device.id}`;
+  const iot = `${api}/iot/devices/${created.device.id}`;
+  const oldKey = { "X-Device-Key": created.apiKey };
+  const initial = (await request(app).get(path + "/diagnostics").set(u.headers).expect(200)).body;
+  diagnosticsResponse.parse(initial);
+  assert.equal(initial.lastSeenAt, null);
+  assert.deepEqual(initial.pendingMeasurements, []);
+  await request(app).get(path + "/diagnostics").set(other.headers).expect(404);
+  await request(app).post(path + "/rotate-key").set(other.headers).expect(404);
+  await request(app).post(iot + "/heartbeat").set(oldKey).send({}).expect(200);
+  const starts = await Promise.all([1, 2].map(() => request(app).post(api + "/measurements")
+    .set(u.headers).send({ source: "device", deviceId: created.device.id })));
+  assert.deepEqual(starts.map((r) => r.status).sort(), [201, 409]);
+  const measurement = starts.find((r) => r.status === 201)!.body;
+  measurementResponse.parse(measurement);
+  assert.equal(starts.find((r) => r.status === 409)!.body.detail.measurementId, measurement.id);
+  const rotated = (await request(app).post(path + "/rotate-key").set(u.headers).expect(200)).body;
+  assert.notEqual(rotated.apiKey, created.apiKey);
+  assert.equal(rotated.device.status, "disconnected");
+  await request(app).get(iot + "/pending").set(oldKey).expect(401);
+  const newKey = { "X-Device-Key": rotated.apiKey };
+  assert.equal((await request(app).get(iot + "/pending").set(newKey).expect(200)).body[0].id, measurement.id);
+  await request(app).post(iot + "/heartbeat").set(newKey).send({ batteryPercent: 75 }).expect(200);
+  const connected = (await request(app).get(path + "/diagnostics").set(u.headers).expect(200)).body;
+  diagnosticsResponse.parse(connected);
+  assert.equal(connected.device.status, "connected");
+  assert.equal(connected.pendingMeasurements.length, 1);
+  assert.ok(connected.heartbeatAgeMs >= 0);
+  assert.equal(JSON.stringify(connected).includes("key_hash"), false);
+  await prisma.measurement.update({ where: { id: measurement.id }, data: { started_at: new Date(Date.now() - 6 * 60000) } });
+  await prisma.device.update({ where: { id: created.device.id }, data: { last_seen: new Date(Date.now() - 61000) } });
+  const expired = (await request(app).get(path + "/diagnostics").set(u.headers).expect(200)).body;
+  assert.equal(expired.device.status, "disconnected");
+  assert.equal(expired.latestMeasurement.status, "expired");
+  assert.deepEqual(expired.pendingMeasurements, []);
+  await request(app).post(api + "/measurements").set(u.headers)
+    .send({ source: "device", deviceId: created.device.id }).expect(201);
+  await request(app).delete(path).set(u.headers).expect(204);
+  await request(app).post(path + "/rotate-key").set(u.headers).expect(409);
+});
+
 test("activity validates dates and supports concurrent upsert", async () => {
   const u = await register();
   const path = api + "/activity/2026-09-28";
@@ -505,6 +552,7 @@ test("feature routers reject unauthenticated requests before reading input", asy
     ["get", "/weights"], ["post", "/weights"],
     ["get", "/dashboard"],
     ["get", "/devices"], ["post", "/devices"], ["delete", "/devices/" + id],
+    ["get", `/devices/${id}/diagnostics`], ["post", `/devices/${id}/rotate-key`],
     ["get", "/measurements"], ["post", "/measurements"],
     ["get", "/measurements/latest"], ["get", "/measurements/" + id],
     ["post", "/measurements/" + id + "/simulate"],

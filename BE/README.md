@@ -2,7 +2,7 @@
 
 Backend **Node.js / TypeScript / Express 5**, dùng **Prisma ORM 7 + PostgreSQL**.
 Validation bằng Zod, Prisma Migrate quản lý schema, Swagger để thử API.
-LLM sẽ train/tích hợp sau; hiện chỉ xử lý nghiệp vụ và gợi ý theo quy tắc.
+API chính tạo gợi ý theo quy tắc; chat demo cục bộ có thể gọi Ollama. Chưa tích hợp model phân loại Python vào API.
 
 ## Chạy trên máy hiện tại
 
@@ -72,48 +72,53 @@ Các luồng ghi cần kiểm soát xung đột vẫn dùng Serializable với r
 Test xác thực kiểm tra salt mật khẩu, JWT bị sửa/ký sai khóa/sai issuer/sai audience/sai thuật toán,
 JWT hết hạn và thu hồi token sau logout. Migration Prisma cũng đã được thử trên database mới riêng biệt.
 
-Lưu ý dependency: `npm audit` hiện báo 4 cảnh báo high qua `deepmerge-ts`/`mysql2` trong Prisma CLI 7.10.
-`npm audit fix` chưa xử lý được trong nhánh hiện tại; không áp dụng `--force` vì sẽ đổi major Prisma.
+Lưu ý dependency: sau cập nhật các bản vá tương thích, `npm audit` vẫn báo 4 mục high qua `deepmerge-ts`/`mysql2` trong Prisma CLI 7.10.
+Dry-run chưa có bản sửa giữ nguyên major Prisma; không dùng `--force`. Các cảnh báo dependency chưa chứng minh API PostgreSQL có đường khai thác tương ứng.
 
 ## Cấu trúc
 
 ```text
 src/
-  app.ts          Express, CORS, Swagger v? x? l? l?i
-  server.ts       Kh?i ??ng, ki?m tra PostgreSQL, graceful shutdown
-  routes.ts       Gh?p c?c router v? ?p d?ng x?c th?c ng??i d?ng
-  config.ts       ??c v? ki?m tra bi?n m?i tr??ng
-  db.ts           Prisma Client v? transaction Serializable c? retry
-  schemas.ts      Schema UUID v? ph?n trang d?ng chung
-  security.ts     Hash SHA-256 v? t?o kh?a ng?u nhi?n d?ng chung
-  constants.ts    C?c m?c th?i gian nghi?p v?
-  docs.ts         OpenAPI d?ng schema t? t?ng module
-  shared/http.ts  L?y user ID v? ki?m tra ID tr?n URL
+  app.ts          Express, CORS, Swagger và xử lý lỗi
+  server.ts       Khởi động, kiểm tra PostgreSQL, graceful shutdown
+  chat-app.ts     HTTP chat local, CORS và rate limit
+  chat-server.ts  Khởi động chat local trên cổng 8001
+  routes.ts       Ghép router và xác thực người dùng
+  config.ts       Đọc và kiểm tra biến môi trường
+  db.ts           Prisma Client và transaction Serializable có retry
+  schemas.ts      Schema UUID và phân trang dùng chung
+  security.ts     Hash SHA-256 và tạo khóa ngẫu nhiên dùng chung
+  constants.ts    Các mốc thời gian nghiệp vụ
+  docs.ts         OpenAPI từ schema từng module
+  response-schemas.ts Schema response cho OpenAPI
+  shared/http.ts  Lấy user ID và kiểm tra ID trên URL
   modules/
-    auth/            ??ng k?, ??ng nh?p, JWT, session v? middleware
-    profile/         H? s? c? nh?n
-    weights/         L?ch s? c?n, BMI v? l?ch c?n ti?p theo
-    devices/         Qu?n l? thi?t b?, x?c th?c kh?a v? API IoT
-    measurements/    Phi?n ?o, m? ph?ng v? x? l? k?t qu?
-    activity/        Ho?t ??ng theo ng?y
-    dashboard/       T?ng h?p d? li?u t?ng quan
-    recommendations/ G?i ? d?a tr?n k?t qu? ?o
-    weather/         Open-Meteo weather / AQI v? cache
+    auth/            Đăng ký, đăng nhập, JWT, session và middleware
+    profile/         Hồ sơ cá nhân
+    weights/         Lịch sử cân, BMI và lịch cân tiếp theo
+    devices/         Quản lý thiết bị, chẩn đoán, đổi key và API IoT
+    measurements/    Phiên đo, mô phỏng và xử lý kết quả
+    activity/        Hoạt động theo ngày
+    dashboard/       Tổng hợp dữ liệu tổng quan
+    recommendations/ Gợi ý dựa trên kết quả đo
+    weather/         Open-Meteo weather / AQI và cache
+    chat/            Hội thoại demo qua Ollama
 prisma/
-  schema.prisma   Model, quan h?, index v? ?nh x? PostgreSQL
-  migrations/     L?ch s? Prisma Migrate v? CHECK constraint
-prisma.config.ts  C?u h?nh Prisma CLI
-scripts/          C?ng c? t?o database ban ??u
-test/             Test API PostgreSQL v? logic nghi?p v?
-examples/         Client TypeScript ?? n?i UI
+  schema.prisma   Model, quan hệ, index và ánh xạ PostgreSQL
+  migrations/     Lịch sử Prisma Migrate và CHECK constraint
+prisma.config.ts  Cấu hình Prisma CLI
+scripts/          Tạo database, IoT smoke test và HTTP probe
+test/             Test API PostgreSQL và logic nghiệp vụ
+examples/         Client TypeScript để nối UI
+docs/IOT-TESTING.md Hướng dẫn test ESP32 / MAX30102
 ```
 
-Trong m?i module, s?a endpoint t?i `routes.ts`, validation t?i `schemas.ts`,
-v? logic d?ng l?i t?i `service.ts` n?u module c? ph?n t??ng ?ng.
-API thi?t b? n?m ? `devices/iot.routes.ts`, d?ng `X-Device-Key`;
-c?c router ng??i d?ng ???c b?o v? b?ng JWT trong `src/routes.ts`.
-Khi th?m feature, t?o module v? ??ng k? router t?i `src/routes.ts`;
-c?p nh?t m? t? API t?i `src/docs.ts`.
+Trong mỗi module, sửa endpoint tại `routes.ts`, validation tại `schemas.ts`,
+và logic dùng lại tại `service.ts` nếu module có phần tương ứng.
+API thiết bị nằm ở `devices/iot.routes.ts`, dùng `X-Device-Key`;
+các router người dùng được bảo vệ bằng JWT trong `src/routes.ts`.
+Khi thêm feature, tạo module và đăng ký router tại `src/routes.ts`;
+cập nhật mô tả API tại `src/docs.ts` và schema response.
 
 
 ## Xác thực
@@ -168,6 +173,8 @@ Các đường dẫn có prefix `/api/v1`; tên trường JSON giữ camelCase c
 | `GET /devices` | Thiết bị của tài khoản |
 | `POST /devices` | `{ name }` → `{ device, apiKey }`, chỉ trả khóa lúc tạo |
 | `DELETE /devices/{deviceId}` | Thu hồi khóa, hủy phiên chờ, giữ lịch sử |
+| `GET /devices/{deviceId}/diagnostics` | Heartbeat, khoảng thời gian polling và phiên đo gần nhất |
+| `POST /devices/{deviceId}/rotate-key` | Đổi khóa; khóa cũ hết hiệu lực ngay, trả khóa mới một lần |
 | `POST /measurements` | `{ source: "simulation" }` hoặc `{ source: "device", deviceId }` |
 | `GET /measurements?limit=50&offset=0` | Lịch sử đo mới nhất trước, tối đa 200/lần |
 | `GET /measurements/latest` | Phiên mới nhất hoặc `null` |
@@ -214,6 +221,18 @@ Thiết bị dùng header `X-Device-Key`, không dùng token đăng nhập:
 5. UI polling phiên đo để xem kết quả. Firmware cần xử lý 409 nếu phiên đã kết thúc/hủy/hết hạn.
 
 Hiện cung cấp REST, chưa có MQTT/WebSocket hoặc firmware.
+
+Mỗi thiết bị chỉ có một phiên đang chờ chưa hết hạn; tạo thêm trả 409 kèm `detail.measurementId`.
+Xem [hướng dẫn test ESP32 / MAX30102](docs/IOT-TESTING.md) để chuẩn bị mạng LAN và test phần cứng.
+`npm.cmd run iot:smoke` kiểm tra luồng backend bằng tài khoản test tự dọn dữ liệu.
+`npm.cmd run iot:probe` kiểm tra server đang chạy bằng key trong `.env`, không gửi số đo giả.
+
+## Chat Ollama cục bộ
+
+Cài và chạy Ollama riêng, tải model tương ứng `OLLAMA_MODEL` trong `.env` (mặc định `qwen2.5:3b`).
+Chạy `npm.cmd run chat`; endpoint là `POST http://127.0.0.1:8001/chat-api/messages`.
+Server cho phép Origin localhost:5173 và 127.0.0.1:5173, giới hạn 10 request/IP/phút.
+Đây là chat demo local, chưa gắn JWT và dữ liệu thực của API chính; context cảm biến/thời tiết được mô tả là mô phỏng.
 
 ## Nối frontend
 

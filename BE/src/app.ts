@@ -33,7 +33,10 @@ export function createApp(fetcher?: typeof fetch) {
       throw new ApiError(503, "Database unavailable or migrations not applied");
     }
   });
-  app.use("/api/v1", createApiRouter(fetcher));
+  app.use("/api/v1", (_req, res, next) => {
+    res.setHeader("Cache-Control", "no-store");
+    next();
+  }, createApiRouter(fetcher));
   app.use((_req, res) => {
     res.status(404).json({ detail: "API endpoint not found" });
   });

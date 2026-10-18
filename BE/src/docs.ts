@@ -6,6 +6,7 @@ import { activitySchema } from "./modules/activity/schemas.js";
 import { loginSchema, registerSchema } from "./modules/auth/schemas.js";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import type { ZodTypeAny } from "zod";
+import { errorResponse, responseSchema } from "./response-schemas.js";
 
 type Method = "get" | "post" | "put" | "patch" | "delete";
 const paths: Record<string, Record<string, unknown>> = {};
@@ -43,6 +44,8 @@ function endpoint(method: Method, path: string, summary: string, body?: ZodTypeA
       { name: "offset", in: "query", schema: { type: "integer", minimum: 0, default: 0 } },
     );
   const publicRoute = path === "/auth/login" || path === "/auth/register";
+  const response = responseSchema(method, path);
+  const errorContent = { "application/json": { schema: zodToJsonSchema(errorResponse, { target: "openApi3" }) } };
   paths[fullPath] ??= {};
   paths[fullPath][method] = {
     summary,
@@ -64,12 +67,14 @@ function endpoint(method: Method, path: string, summary: string, body?: ZodTypeA
         }
       : {}),
     responses: {
-      [status]: { description: "Success; see README for response contract" },
-      "401": { description: "Invalid or expired credentials" },
-      "404": { description: "Resource not found or not owned" },
-      "409": { description: "State conflict" },
-      "422": { description: "Invalid input" },
-      "503": { description: "Dependency unavailable" },
+      [status]: { description: status === 204 ? "Success; no response body" : "Success",
+        ...(status !== 204 && response ? { content: { "application/json": { schema: zodToJsonSchema(response, { target: "openApi3" }) } } } : {}),
+      },
+      ...Object.fromEntries(Object.entries({
+        "400": "Malformed JSON", "401": "Invalid or expired credentials", "404": "Resource not found or not owned",
+        "409": "State conflict", "413": "Request body too large", "422": "Invalid input",
+        "429": "Too many requests", "500": "Internal server error", "503": "Dependency unavailable",
+      }).map(([code, description]) => [code, { description, content: errorContent }])),
     },
   };
 }
@@ -85,6 +90,8 @@ endpoint("get", "/dashboard", "Tổng quan");
 endpoint("get", "/devices", "Thiết bị của tài khoản");
 endpoint("post", "/devices", "Tạo thiết bị và cấp khóa một lần", deviceSchema, 201);
 endpoint("delete", "/devices/{deviceId}", "Thu hồi thiết bị", undefined, 204);
+endpoint("get", "/devices/{deviceId}/diagnostics", "Chẩn đoán kết nối và phiên đo của thiết bị");
+endpoint("post", "/devices/{deviceId}/rotate-key", "Đổi khóa thiết bị; khóa cũ hết hiệu lực ngay");
 endpoint("post", "/iot/devices/{deviceId}/heartbeat", "Thiết bị báo kết nối", heartbeatSchema);
 endpoint("get", "/iot/devices/{deviceId}/pending", "Thiết bị lấy phiên chờ đo");
 endpoint(
